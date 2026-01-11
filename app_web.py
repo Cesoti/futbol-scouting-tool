@@ -12,7 +12,6 @@ from search_engine import (
     FEATURE_COLS,
 )
 
-
 st.set_page_config(page_title="Fútbol Scouting Tool", layout="wide")
 
 CSV_PATH = "datos_laliga.csv"
@@ -39,8 +38,8 @@ def make_comparison_pizza(df: pd.DataFrame, idx_a, idx_b):
         "Goles",
         "Asistencias",
         "xG",
-        "npxG",
         "xAG",
+        "npxG+xAG",
         "Conducciones\nprog. (PrgC)",
         "Pases\nprog. (PrgP)",
         "Recepciones\nprog. (PrgR)",
@@ -192,16 +191,17 @@ def main():
     c3.metric("Posición", row["Pos"])
     c4.metric("Minutos", int(row["Min"]))
 
-    c5, c6, c7, c8 = st.columns(4)
-    c5.metric("Año nac.", int(row["Born"]))
-    c6.metric("Goles", int(row["Gls"]))
-    c7.metric("Asistencias", int(row["Ast"]))
-    c8.metric("xG", round(float(row["xG"]), 2))
+    c5, c6, c7 = st.columns(3)
+    c5.metric("Goles", int(row["Gls"]))
+    c6.metric("Asistencias", int(row["Ast"]))
+    c7.metric("xG", round(float(row["xG"]), 2))
 
     features_scaled, df_aligned, scaler = build_feature_matrix(df_filtered)
 
     if len(df_aligned) < 2:
-        st.warning("No hay suficientes jugadores con los filtros actuales para calcular similitudes.")
+        st.warning(
+            "No hay suficientes jugadores con los filtros actuales para calcular similitudes."
+        )
         return
 
     model = train_neighbors(features_scaled, metric="cosine")
