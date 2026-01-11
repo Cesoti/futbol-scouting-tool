@@ -27,6 +27,15 @@ STANDARD_COLS = [
     "G+A_90",
 ]
 
+FEATURE_COLS = [
+    "Gls_90",
+    "Ast_90",
+    "G+A_90",
+    "PrgC_90",
+    "PrgP_90",
+    "PrgR_90",
+]
+
 
 def load_data(csv_path: str = CSV_PATH) -> pd.DataFrame:
     df = pd.read_csv(
@@ -42,20 +51,19 @@ def load_data(csv_path: str = CSV_PATH) -> pd.DataFrame:
         df = df.drop(columns=["Dummy"])
 
     if "90s" in df.columns:
-        per90_candidates = ["PrgC", "PrgP", "PrgR", "xG", "xAG", "npxG+xAG"]
-        for col in per90_candidates:
-            per90_name = f"{col}_90"
-            if col in df.columns and per90_name not in df.columns:
-                df[per90_name] = df[col] / df["90s"].replace(0, pd.NA)
+        for base_col, per90_col in [
+            ("PrgC", "PrgC_90"),
+            ("PrgP", "PrgP_90"),
+            ("PrgR", "PrgR_90"),
+        ]:
+            if base_col in df.columns and per90_col not in df.columns:
+                df[per90_col] = df[base_col] / df["90s"].replace(0, pd.NA)
+
+    for col in ["PrgC_90", "PrgP_90", "PrgR_90"]:
+        if col in df.columns:
+            df[col] = df[col].fillna(0)
 
     return df
-
-
-def get_feature_cols(df: pd.DataFrame) -> list[str]:
-    feature_cols = [c for c in df.columns if c.endswith("_90")]
-    if not feature_cols:
-        raise ValueError("No se encontraron columnas *_90 en el dataframe.")
-    return feature_cols
 
 
 def filter_players(
@@ -74,7 +82,10 @@ def filter_players(
 
 
 def build_feature_matrix(df: pd.DataFrame):
-    feature_cols = get_feature_cols(df)
+    feature_cols = [c for c in FEATURE_COLS if c in df.columns]
+    if not feature_cols:
+        raise ValueError("No feature columns found in dataframe.")
+
     features = df[feature_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0)
 
     scaler = MinMaxScaler()
@@ -85,7 +96,7 @@ def build_feature_matrix(df: pd.DataFrame):
         columns=feature_cols,
         index=df.index,
     )
-    return features_scaled, df, scaler, feature_cols
+    return features_scaled, df, scaler
 
 
 def train_neighbors(

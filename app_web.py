@@ -9,6 +9,7 @@ from search_engine import (
     build_feature_matrix,
     train_neighbors,
     get_similar_players,
+    FEATURE_COLS,
 )
 
 st.set_page_config(page_title="Fútbol Scouting Tool", layout="wide")
@@ -21,35 +22,29 @@ def get_raw_data() -> pd.DataFrame:
     return load_data(CSV_PATH)
 
 
-PIZZA_PARAMS = {
-    "Goles/90": "Gls_90",
-    "Asistencias/90": "Ast_90",
-    "G+A/90": "G+A_90",
-    "xG/90": "xG_90",
-    "xAG/90": "xAG_90",
-    "npxG+xAG/90": "npxG+xAG_90",
-    "Conducciones\nprog./90 (PrgC)": "PrgC_90",
-    "Pases\nprog./90 (PrgP)": "PrgP_90",
-    "Recepciones\nprog./90 (PrgR)": "PrgR_90",
-}
-
-
 def make_comparison_pizza(df: pd.DataFrame, idx_a, idx_b):
-    player_a = df.loc[idx_a, "Player"]
-    squad_a = df.loc[idx_a, "Squad"]
-    player_b = df.loc[idx_b, "Player"]
-    squad_b = df.loc[idx_b, "Squad"]
+    pos_a = df.index.get_loc(idx_a)
+    pos_b = df.index.get_loc(idx_b)
 
-    valid_cols = [col for col in PIZZA_PARAMS.values() if col in df.columns]
-    valid_labels = [
-        label for label, col in PIZZA_PARAMS.items() if col in df.columns
-    ]
+    player_a = df.iloc[pos_a]["Player"]
+    squad_a = df.iloc[pos_a]["Squad"]
+    player_b = df.iloc[pos_b]["Player"]
+    squad_b = df.iloc[pos_b]["Squad"]
 
-    values_a = df.loc[idx_a, valid_cols].astype(float).tolist()
-    values_b = df.loc[idx_b, valid_cols].astype(float).tolist()
+    values_a = df.iloc[pos_a][FEATURE_COLS].astype(float).tolist()
+    values_b = df.iloc[pos_b][FEATURE_COLS].astype(float).tolist()
 
     max_range = [max(a, b, 1e-6) for a, b in zip(values_a, values_b)]
-    min_range = [0.0] * len(valid_cols)
+    min_range = [0.0] * len(FEATURE_COLS)
+
+    params = [
+        "Goles/90",
+        "Asistencias/90",
+        "G+A/90",
+        "Cond. Prog/90",
+        "Pases Prog/90",
+        "Recep. Prog/90",
+    ]
 
     background = "#101010"
     text = "#F2F2F2"
@@ -57,7 +52,7 @@ def make_comparison_pizza(df: pd.DataFrame, idx_a, idx_b):
     color_b = "#00B4FF"
 
     baker = PyPizza(
-        params=valid_labels,
+        params=params,
         min_range=min_range,
         max_range=max_range,
         background_color=background,
@@ -127,7 +122,7 @@ def make_comparison_pizza(df: pd.DataFrame, idx_a, idx_b):
     fig.text(
         0.5,
         0.93,
-        "Standard Stats LaLiga | per 90 mins (Goles/90, Asistencias/90, xG/90, xAG/90, PrgC/90, PrgP/90, PrgR/90)",
+        "Standard Stats LaLiga | per 90 mins",
         ha="center",
         va="center",
         fontsize=11,
@@ -202,9 +197,7 @@ def main():
     c6.metric("Asistencias totales", int(row["Ast"]))
     c7.metric("xG total", round(float(row["xG"]), 2))
 
-    features_scaled, df_aligned, scaler, feature_cols = build_feature_matrix(
-        df_filtered
-    )
+    features_scaled, df_aligned, scaler = build_feature_matrix(df_filtered)
 
     if len(df_aligned) < 2:
         st.warning(
