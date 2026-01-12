@@ -85,7 +85,6 @@ def filter_players(
     if position_prefix and position_prefix != "ALL":
         df = df[df["Pos"].astype(str).str.startswith(position_prefix)]
 
-    # Filtrar por edad máxima (verificando que la columna existe)
     if max_age is not None and "Age" in df.columns:
         df["Age"] = pd.to_numeric(df["Age"], errors="coerce").fillna(999)
         df = df[df["Age"] <= max_age]

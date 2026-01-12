@@ -15,7 +15,7 @@ RAW_COLUMNS = [
 OUTPUT_COLUMNS = [
     "Player", "Nation", "Pos", "Squad", "Age",
     "Min", "90s",
-    "Gls", "Ast", "G+A", "xG", "xAG", "npxG+xAG",  # ← Cambiado npxG por xG
+    "Gls", "Ast", "G+A", "xG", "xAG", "npxG+xAG",  
     "PrgC", "PrgP", "PrgR",
     "Gls_90", "Ast_90", "G+A_90"
 ]
@@ -135,13 +135,11 @@ def run_etl(input_path: str = "fbref_raw.csv",
     df_raw = load_raw_fbref(input_path)
     df_clean = clean_columns(df_raw)
     
-    # Comprobación básica de que tenemos al menos la columna Player
     if "Player" not in df_clean.columns:
         print("Columnas leídas del CSV:")
         print(list(df_clean.columns))
         raise SystemExit("El CSV no tiene encabezados esperados. Revisa fbref_raw.csv.")
     
-    # ← NUEVO: Parsear la edad (extraer solo años de "25-347")
     if "Age" in df_clean.columns:
         print("Parseando columna Age...")
         df_clean["Age"] = df_clean["Age"].apply(parse_age)
@@ -170,7 +168,6 @@ def run_etl(input_path: str = "fbref_raw.csv",
     print(f"Columnas finales: {list(df_final.columns)}")
     print(f"Total de jugadores: {len(df_final)}")
     
-    # ← IMPORTANTE: Ver algunas edades antes de guardar
     if "Age" in df_final.columns:
         print("\nMuestra de edades:")
         print(df_final[["Player", "Age"]].head(10))
@@ -179,7 +176,7 @@ def run_etl(input_path: str = "fbref_raw.csv",
         output_path,
         sep=",",
         index=False,
-        header=False  # Sin encabezados porque search_engine.py los define
+        header=False  
     )
     
     print("ETL completado. 'datos_laliga.csv' actualizado.")
