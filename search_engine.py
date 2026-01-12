@@ -50,18 +50,23 @@ def load_data(csv_path: str = CSV_PATH) -> pd.DataFrame:
     if "Dummy" in df.columns:
         df = df.drop(columns=["Dummy"])
 
-    if "90s" in df.columns:
-        for base_col, per90_col in [
-            ("PrgC", "PrgC_90"),
-            ("PrgP", "PrgP_90"),
-            ("PrgR", "PrgR_90"),
-        ]:
-            if base_col in df.columns and per90_col not in df.columns:
-                df[per90_col] = df[base_col] / df["90s"].replace(0, pd.NA)
+    df["Min"] = pd.to_numeric(df["Min"], errors="coerce").fillna(0)
+    df["90s"] = pd.to_numeric(df["90s"], errors="coerce")
+    df["90s"] = df["90s"].replace(0, pd.NA)
 
-    for col in ["PrgC_90", "PrgP_90", "PrgR_90"]:
+    for base_col, per90_col in [
+        ("PrgC", "PrgC_90"),
+        ("PrgP", "PrgP_90"),
+        ("PrgR", "PrgR_90"),
+    ]:
+        if base_col in df.columns:
+            df[base_col] = pd.to_numeric(df[base_col], errors="coerce").fillna(0)
+            if per90_col not in df.columns:
+                df[per90_col] = df[base_col] / df["90s"]
+
+    for col in FEATURE_COLS:
         if col in df.columns:
-            df[col] = df[col].fillna(0)
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     return df
 
@@ -72,13 +77,16 @@ def filter_players(
     position_prefix: str | None = None,
 ) -> pd.DataFrame:
     df = df.copy()
-    df["Min"] = pd.to_numeric(df["Min"], errors="coerce")
+    df["Min"] = pd.to_numeric(df["Min"], errors="coerce").fillna(0)
     df = df[df["Min"] >= min_minutes]
 
     if position_prefix and position_prefix != "ALL":
         df = df[df["Pos"].astype(str).str.startswith(position_prefix)]
 
-    return df[df["Player"].notna()]
+    df = df[df["Player"].notna()]
+    df = df.reset_index(drop=True)
+    
+    return df
 
 
 def build_feature_matrix(df: pd.DataFrame):
@@ -136,21 +144,18 @@ def get_similar_players(
     if len(df) < 2:
         return None, []
 
-    target_label = candidates.index[0]
-    target_pos = df.index.get_loc(target_label)
-
-    target_vector = features_scaled.iloc[target_pos].values.reshape(1, -1)
+    target_idx = candidates.index[0]
+    target_vector = features_scaled.loc[target_idx].values.reshape(1, -1)
+    
     distances, indices = model.kneighbors(target_vector)
 
-    positions = indices[0]
-    dists = distances[0]
-
     results = []
-    for pos, dist in zip(positions, dists):
-        if pos == target_pos:
+    for pos, dist in zip(indices[0], distances[0]):
+        idx = df.index[pos]
+        
+        if idx == target_idx:
             continue
 
-        idx = df.index[pos]
         results.append(
             (
                 idx,
@@ -162,4 +167,4 @@ def get_similar_players(
         if len(results) >= top_k:
             break
 
-    return target_label, results
+    return target_idx, results

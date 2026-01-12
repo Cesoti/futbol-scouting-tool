@@ -23,16 +23,17 @@ def get_raw_data() -> pd.DataFrame:
 
 
 def make_comparison_pizza(df: pd.DataFrame, idx_a, idx_b):
-    pos_a = df.index.get_loc(idx_a)
-    pos_b = df.index.get_loc(idx_b)
+    if idx_a not in df.index or idx_b not in df.index:
+        st.error("Error: Índices de jugadores no válidos")
+        return None
 
-    player_a = df.iloc[pos_a]["Player"]
-    squad_a = df.iloc[pos_a]["Squad"]
-    player_b = df.iloc[pos_b]["Player"]
-    squad_b = df.iloc[pos_b]["Squad"]
+    player_a = df.loc[idx_a, "Player"]
+    squad_a = df.loc[idx_a, "Squad"]
+    player_b = df.loc[idx_b, "Player"]
+    squad_b = df.loc[idx_b, "Squad"]
 
-    values_a = df.iloc[pos_a][FEATURE_COLS].astype(float).tolist()
-    values_b = df.iloc[pos_b][FEATURE_COLS].astype(float).tolist()
+    values_a = df.loc[idx_a, FEATURE_COLS].astype(float).tolist()
+    values_b = df.loc[idx_b, FEATURE_COLS].astype(float).tolist()
 
     max_range = [max(a, b, 1e-6) for a, b in zip(values_a, values_b)]
     min_range = [0.0] * len(FEATURE_COLS)
@@ -155,6 +156,8 @@ def main():
         st.session_state.similars_df = None
     if "target_idx" not in st.session_state:
         st.session_state.target_idx = None
+    if "df_aligned" not in st.session_state:
+        st.session_state.df_aligned = None
 
     df_raw = get_raw_data()
 
@@ -223,6 +226,7 @@ def main():
             st.warning("No se encontraron jugadores similares con los filtros actuales.")
             st.session_state.similars_df = None
             st.session_state.target_idx = None
+            st.session_state.df_aligned = None
         else:
             rows = []
             for idx, name, squad, dist in similars:
@@ -238,9 +242,11 @@ def main():
                 )
             st.session_state.similars_df = pd.DataFrame(rows)
             st.session_state.target_idx = target_idx
+            st.session_state.df_aligned = df_aligned
 
     similars_df = st.session_state.similars_df
     target_idx = st.session_state.target_idx
+    df_aligned = st.session_state.df_aligned
 
     if similars_df is not None and target_idx is not None:
         st.dataframe(
@@ -248,7 +254,7 @@ def main():
             use_container_width=True,
         )
 
-    if similars_df is None or target_idx is None:
+    if similars_df is None or target_idx is None or df_aligned is None:
         return
 
     st.markdown("---")
@@ -263,8 +269,12 @@ def main():
     selected_row = similars_df[similars_df["Jugador"] == selected_comp].iloc[0]
     idx_b = selected_row["Idx"]
 
-    fig = make_comparison_pizza(df_aligned, idx_a=target_idx, idx_b=idx_b)
-    st.pyplot(fig)
+    try:
+        fig = make_comparison_pizza(df_aligned, idx_a=target_idx, idx_b=idx_b)
+        if fig:
+            st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Error al generar la pizza: {str(e)}")
 
 
 if __name__ == "__main__":
