@@ -10,7 +10,7 @@ STANDARD_COLS = [
     "Nation",
     "Pos",
     "Squad",
-    "Age",  # ← CAMBIADO: era "Dummy"
+    "Age",
     "Min",
     "90s",
     "Gls",
@@ -47,7 +47,7 @@ def load_data(csv_path: str = CSV_PATH) -> pd.DataFrame:
     )
     df.columns = df.columns.str.strip()
 
-    # ← CAMBIADO: Convertir Age a numérico en lugar de eliminarla
+    # Convertir Age a numérico
     if "Age" in df.columns:
         df["Age"] = pd.to_numeric(df["Age"], errors="coerce").fillna(0)
 
@@ -76,7 +76,7 @@ def filter_players(
     df: pd.DataFrame,
     min_minutes: int = 400,
     position_prefix: str | None = None,
-    max_age: int | None = None,  # ← NUEVO PARÁMETRO
+    max_age: int | None = None,
 ) -> pd.DataFrame:
     df = df.copy()
     df["Min"] = pd.to_numeric(df["Min"], errors="coerce").fillna(0)
@@ -85,8 +85,8 @@ def filter_players(
     if position_prefix and position_prefix != "ALL":
         df = df[df["Pos"].astype(str).str.startswith(position_prefix)]
 
-    # ← NUEVO: Filtrar por edad máxima
-    if max_age is not None:
+    # Filtrar por edad máxima (verificando que la columna existe)
+    if max_age is not None and "Age" in df.columns:
         df["Age"] = pd.to_numeric(df["Age"], errors="coerce").fillna(999)
         df = df[df["Age"] <= max_age]
 
