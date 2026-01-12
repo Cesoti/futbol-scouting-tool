@@ -169,13 +169,24 @@ def main():
         step=50,
     )
 
+    # ← NUEVO: Slider de edad máxima
+    max_age = st.sidebar.slider(
+        "Edad Máxima",
+        min_value=15,
+        max_value=40,
+        value=40,
+        step=1,
+    )
+
     pos_options = ["ALL", "FW", "MF", "DF", "GK"]
     pos_choice = st.sidebar.selectbox("Posición", options=pos_options, index=1)
 
+    # ← MODIFICADO: Añadido max_age
     df_filtered = filter_players(
         df_raw,
         min_minutes=min_minutes,
         position_prefix=pos_choice,
+        max_age=max_age,
     )
 
     if df_filtered.empty:
@@ -189,11 +200,13 @@ def main():
 
     row = df_filtered[df_filtered["Player"] == selected_player].iloc[0]
 
-    c1, c2, c3, c4 = st.columns(4)
+    # ← MODIFICADO: Ahora son 5 columnas y se muestra la Edad
+    c1, c2, c3, c4, c5_edad = st.columns(5)
     c1.metric("Jugador", row["Player"])
     c2.metric("Equipo", row["Squad"])
     c3.metric("Posición", row["Pos"])
     c4.metric("Minutos", int(row["Min"]))
+    c5_edad.metric("Edad", int(row["Age"]))  # ← NUEVA MÉTRICA
 
     c5, c6, c7 = st.columns(3)
     c5.metric("Goles totales", int(row["Gls"]))
