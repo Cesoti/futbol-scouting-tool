@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import List
 
+
 RAW_COLUMNS = [
     "Rk", "Player", "Nation", "Pos", "Squad", "Age", "Born",
     "MP", "Starts", "Min", "90s",
@@ -11,6 +12,7 @@ RAW_COLUMNS = [
     "Gls_90", "Ast_90", "G+A_90", "G-PK_90", "G+A-PK_90",
     "xG_90", "xAG_90", "xG+xAG_90", "npxG_90", "npxG+xAG_90"
 ]
+
 
 OUTPUT_COLUMNS = [
     "Player", "Nation", "Pos", "Squad", "Age",
@@ -59,6 +61,7 @@ def parse_age(age_str: str) -> int:
 def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Deja solo las columnas que nos interesan.
+    Retorna una copia explícita para evitar warnings.
     """
     missing: List[str] = [c for c in RAW_COLUMNS if c not in df.columns]
     if missing:
@@ -66,9 +69,9 @@ def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
         for c in missing:
             print(f"  - {c}")
         cols_present = [c for c in RAW_COLUMNS if c in df.columns]
-        df = df[cols_present]
+        df = df[cols_present].copy()
     else:
-        df = df[RAW_COLUMNS]
+        df = df[RAW_COLUMNS].copy()
     
     return df
 
@@ -81,12 +84,14 @@ def normalize_positions(df: pd.DataFrame) -> pd.DataFrame:
     if "Pos" not in df.columns:
         return df
     
+    df = df.copy()
+    
     def _main_pos(pos: str) -> str:
         if isinstance(pos, str):
             return pos.split(",")[0].strip()
         return pos
     
-    df["Pos"] = df["Pos"].apply(_main_pos)
+    df.loc[:, "Pos"] = df["Pos"].apply(_main_pos)
     return df
 
 
@@ -94,9 +99,10 @@ def convert_numeric(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     """
     Convierte columnas a numéricas, forzando errores a NaN.
     """
+    df = df.copy()
     for c in cols:
         if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
+            df.loc[:, c] = pd.to_numeric(df[c], errors="coerce")
     return df
 
 
@@ -104,17 +110,19 @@ def build_per90(df: pd.DataFrame) -> pd.DataFrame:
     """
     Asegura las métricas por 90 minutos si no vinieran en el CSV.
     """
+    df = df.copy()
+    
     if "90s" not in df.columns and "Min" in df.columns:
-        df["90s"] = df["Min"] / 90.0
+        df.loc[:, "90s"] = df["Min"] / 90.0
     
     if "Gls_90" not in df.columns and "Gls" in df.columns and "90s" in df.columns:
-        df["Gls_90"] = df["Gls"] / df["90s"]
+        df.loc[:, "Gls_90"] = df["Gls"] / df["90s"]
     
     if "Ast_90" not in df.columns and "Ast" in df.columns and "90s" in df.columns:
-        df["Ast_90"] = df["Ast"] / df["90s"]
+        df.loc[:, "Ast_90"] = df["Ast"] / df["90s"]
     
     if "G+A_90" not in df.columns and "G+A" in df.columns and "90s" in df.columns:
-        df["G+A_90"] = df["G+A"] / df["90s"]
+        df.loc[:, "G+A_90"] = df["G+A"] / df["90s"]
     
     return df
 
@@ -124,7 +132,7 @@ def select_output(df: pd.DataFrame) -> pd.DataFrame:
     Selecciona y ordena las columnas finales que usa la app.
     """
     cols_present = [c for c in OUTPUT_COLUMNS if c in df.columns]
-    return df[cols_present]
+    return df[cols_present].copy()
 
 
 def run_etl(input_path: str = "fbref_raw.csv",
@@ -142,7 +150,8 @@ def run_etl(input_path: str = "fbref_raw.csv",
     
     if "Age" in df_clean.columns:
         print("Parseando columna Age...")
-        df_clean["Age"] = df_clean["Age"].apply(parse_age)
+        df_clean = df_clean.copy()
+        df_clean.loc[:, "Age"] = df_clean["Age"].apply(parse_age)
     
     df_clean = normalize_positions(df_clean)
     
@@ -159,7 +168,7 @@ def run_etl(input_path: str = "fbref_raw.csv",
     df_clean = convert_numeric(df_clean, numeric_cols)
     df_clean = build_per90(df_clean)
     
-    df_clean = df_clean[df_clean["Player"].astype(str).str.strip() != ""]
+    df_clean = df_clean[df_clean["Player"].astype(str).str.strip() != ""].copy()
     df_clean = df_clean.reset_index(drop=True)
     
     df_final = select_output(df_clean)
